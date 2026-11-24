@@ -1,60 +1,36 @@
-# DUEL VARIAN — NI23 G3 · akun13 · THE DAILY MERIDIAN
+# DUEL — NI23 G4 akun13 (THE MONDAY HERALD)
 
-## Tiga varian yang dibangun (satu compose.py, argumen A/B/C)
+## Duel varian internal (compose.py, dua susunan)
+- Varian A: trio lead di baris pertama (lead #1 Alcaraz membentang 2 kolom,
+  #2 Hormuz, #3 klaim IRGC), lalu grid 4 kolom, kotak THE DAY IN NUMBERS
+  menutup baris grid terakhir, pita peta + DATE CHECK, ALSO ON 4 kolom.
+- Varian B: COP31 ditukar ke baris pertama menggantikan posisi grid klaim
+  IRGC (IRGC turun ke baris kedua).
+- Penilaian @300px: A dan B sama-sama terbaca; A menang karena trio lead
+  konsensus hari itu (Alcaraz + Hormuz + klaim IRGC berbingkai CLAIM)
+  tampil utuh di baris pertama — jangkar kriteria 1–2 bedah final NI22 —
+  dan urutan kartu A mengalir lead → perang Teluk → Eropa → dunia.
+- PEMENANG: Varian A.
 
-- **A — Putih Gading Klasik.** Palet akun: latar putih gading, tinta marun,
-  aksen abu arang; masthead marun di atas gading, strip angka marun di atas
-  gading, kartu panel terang berbingkai halus.
-- **B — Meja Arang.** Latar arang gelap, panel lebih gelap, teks gading,
-  aksen marun terang (terakota). Susunan sama, suasana "edisi malam".
-- **C — Pita Marun.** Masthead gading di atas pita marun penuh + strip angka
-  gading di atas pita marun; sisanya palet terang seperti A.
+Trio lead G4 akun13: #48 Alcaraz (lead akun) + #1 Hormuz tanker dibakar +
+#2 klaim IRGC radar Patriot (berbingkai klaim di judul kartu).
 
-## Penilaian
+## Duel vs ENTRY G3 BERDIRI (Gerbang Tembak Pengganti)
+Lawan: THE DAILY MERIDIAN (G3 akun13) — 323.952 B, sha 8617678c…,
+sub 01a20b3d-5eea-7335-ab97-3e4cad1e7967, lead India 720/9d.
 
-- **Kontras:** A tertinggi (tinta gelap di atas gading di semua zona).
-  B paling lemah di kicker dan deck kartu pada ukuran kecil; C kuat di
-  masthead tetapi strip angka gading-di-marun sedikit di bawah A.
-- **Keterbacaan 300px:** A dan C lulus; pada A masthead, tanggal, 6 angka,
-  judul lead dan 13 judul kartu mini semua terbaca. B terbaca tetapi
-  lebih redup, terutama ALSO ON dan legenda peta.
-- **Kepadatan data:** sama di ketiga varian (40 cerita, 14 kartu, 6 angka,
-  6 slot timeline, 8 buangan DATE CHECK) — pembeda murni palet/presentasi.
+| Aspek | G3 berdiri | G4 THE MONDAY HERALD |
+|---|---|---|
+| Ukuran file | 323.952 B | 119.913 B (jauh lebih ramping; seri → kecil menang) |
+| Lead | India 720/9d (satu bidang olahraga) | Alcaraz ATP Finals (rotasi lead G4) + trio Hormuz/IRGC |
+| Kartu utama | grid G3 | 13 kartu bernomor, judul lead 29px, mini 22–24px |
+| Chip status | sebagian | 100% kartu: REPORTED/CLAIM/ONGOING/OFFICIAL/ON RECORD |
+| Kotak angka | ada | THE DAY IN NUMBERS 6 angka, 6 mengikat kartu |
+| Pembingkaian klaim | — | #3 "IRGC Claims…", #6 "…, Zelenskiy Says", #2 tanker "burn", #7 kapal "still burns", #13 "suspected drone strike" |
+| DATE CHECK | ada | 7 buangan bernama + bertanggal; tak ada kartu bertentangan (D11 bukan cerita; #23 hanya angka update 23 Nov) |
+| Uji margin | — | 13/13 LOLOS (margin_check.py) |
+| Uji 300px | — | masthead, tanggal raksasa, 13 judul kartu terbaca |
 
-## Pemenang: A — Putih Gading Klasik
-
-Alasan: kontras maksimum untuk juri yang membaca di ±300px, identitas
-koran paling jelas (masthead marun Playfair Black 64px di atas gading),
-dan sesuai palet resmi akun (putih gading, tinta marun, aksen abu arang).
-
-## Uji 300px (pemenang A)
-
-entry.png diperkecil ke 300×300 dan diperiksa: masthead "THE DAILY
-MERIDIAN" terbaca, tanggal "Monday 23 November 2026" terbaca, keenam
-angka strip terbaca, judul lead "India Post Record 720/9 at Wellington"
-terbaca, dan judul ke-14 kartu utama terbaca. **LULUS.**
-
-## Kenapa lebih kuat dari entry G2 ("Piringan Hitam", lead G2 #14 Inggris–UE)
-
-G2 memakai konsep piringan hitam (dekoratif, bukan halaman koran lurus)
-dengan lead kesepakatan Inggris–UE. G3 adalah halaman depan koran lurus
-yang sesungguhnya: masthead raksasa + tanggal besar, lead diganti ke
-rekor kriket India 720/9d di Wellington (pool #25, angka paling mencolok
-hari itu) sebagai kartu #1 terbesar dengan ilustrasi lapangan + papan
-skor, teks besar yang tetap terbaca di 300px, 40 cerita dari 8 region,
-peta titik bernomor pin, dan kotak DATE CHECK bernama + bertanggal.
-
-## Trio lead
-
-1. **#25 India 720/9d di Wellington** (lead akun, kartu #1)
-2. **#43 Demokrat menangi DPR AS 258–173** (kartu #2)
-3. **#7 COP31 berakhir tanpa kesepakatan** (kartu #3)
-
-## Verifikasi teknis
-
-- entry.png: 1024×1024 (IHDR terbaca struct), 323.952 byte,
-  sha256 8617678cfe31888225342e5a22cd136c6d2174025ad9dfb845b35265de530092
-- Margin checker: **13/13 LOLOS** (14 kartu, ilustrasi 100%, tag sumber
-  100%, 6 angka semua mengikat, pin peta 14/14, DATE CHECK 8 bernama,
-  timeline 6 slot, 40 cerita, brief segar 58%)
-- main.py: stdlib-only copy-only, dua kali jalan byte-identik.
+VONIS: G4 LEBIH KUAT dari G3 berdiri — file 63% lebih kecil, lead
+terotasi, chip status 100%, pembingkaian klaim eksplisit di judul,
+angka mengikat 6/6, margin 13/13. Layak tembak sebagai pengganti.

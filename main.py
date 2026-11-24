@@ -1,71 +1,57 @@
 #!/usr/bin/env python3
-"""Penyalin final THE DAILY MERIDIAN untuk akun13 (news-image-20261123).
+"""Entry program — THE MONDAY HERALD (news-image-20261123, akun13 G4).
 
-Edisi Senin 23 November 2026 koran THE DAILY MERIDIAN — tajuk utama
-India 720/9 di Wellington — tersimpan sebagai entry.png di samping
-berkas ini. Tugas modul ini sempit dan disengaja membosankan: membaca
-berkas itu, membuktikan ia persis berkas yang dimaksud (ukuran,
-hash, tanda tangan PNG, dan geometri IHDR), lalu menyalinnya utuh
-ke direktori keluaran. Tidak ada pembuatan gambar di sini, tidak
-ada pustaka pihak ketiga, dan keluaran selalu identik byte demi byte.
+One page, one day: Monday 23 November 2026. The Herald leads with
+Alcaraz's first ATP Finals title and carries forty dated stories,
+each pinned, sourced and certainty-tagged on the sheet.
+
+The program is stdlib-only and copy-only: it verifies the bundled
+entry.png against a pinned size and digest, then writes it to the
+output directory unchanged.
 """
 
 import hashlib
 import os
 import sys
-from struct import unpack
 
-# Sidik jari berkas final yang sudah terverifikasi di repo.
-UKURAN_FINAL = 323952
-SHA_FINAL = "8617678cfe31888225342e5a22cd136c6d2174025ad9dfb845b35265de530092"
-BATAS_KOMPETISI = 1024 * 1024
-AWALAN_PNG = b"\x89PNG\r\n\x1a\n"
+PINNED_BYTES = 119913
+PINNED_SHA256 = "3efbdf9266381dfd03797367973342064aea1952ff41c008e9b93c0e55c95bda"
+MAGIC = b"\x89PNG\r\n\x1a\n"
+CEILING = 1048576
 
 
-def gagal(pesan):
-    raise SystemExit("THE DAILY MERIDIAN: " + pesan)
-
-
-def baca_sumber():
+def load_page():
+    # The verified page sits beside this program in the repository.
     folder = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(folder, "entry.png"), "rb") as berkas:
-        return berkas.read()
+    path = os.path.join(folder, "entry.png")
+    with open(path, "rb") as handle:
+        return handle.read()
 
 
-def periksa(isi):
-    if len(isi) < 24:
-        gagal("berkas terlalu pendek untuk sebuah PNG")
-    if not isi.startswith(AWALAN_PNG):
-        gagal("tanda tangan PNG tidak dikenal")
-    if isi[12:16] != b"IHDR":
-        gagal("chunk pertama bukan IHDR")
-    lebar, tinggi = unpack(">II", isi[16:24])
-    if lebar != 1024 or tinggi != 1024:
-        gagal("ukuran kanvas %dx%d, bukan 1024x1024" % (lebar, tinggi))
-    if len(isi) > BATAS_KOMPETISI:
-        gagal("berkas melampaui batas 1 MiB")
-    if len(isi) != UKURAN_FINAL:
-        gagal("panjang %d byte tidak sama dengan %d byte" % (len(isi), UKURAN_FINAL))
-    ringkasan = hashlib.sha256(isi).hexdigest()
-    if ringkasan != SHA_FINAL:
-        gagal("sha256 menyimpang: " + ringkasan)
-    return ringkasan
+def verify_page(blob):
+    if len(blob) == 0:
+        sys.exit("entry.png kosong")
+    if blob[:8] != MAGIC:
+        sys.exit("entry.png bukan PNG")
+    if len(blob) > CEILING:
+        sys.exit("entry.png melewati 1 MiB: %d" % len(blob))
+    if len(blob) != PINNED_BYTES:
+        sys.exit("ukuran entry.png tidak cocok: %d" % len(blob))
+    digest = hashlib.sha256(blob).hexdigest()
+    if digest != PINNED_SHA256:
+        sys.exit("sha256 entry.png tidak cocok: %s" % digest)
+    return digest
 
 
-def salin(isi, ringkasan):
-    # Tulis lewat berkas sementara di folder yang sama, lalu ganti nama:
-    # pembaca tidak pernah melihat salinan yang baru tertulis separuh.
-    tujuan_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(tujuan_dir, exist_ok=True)
-    tujuan = os.path.join(tujuan_dir, "entry.png")
-    sementara = tujuan + ".tmp"
-    with open(sementara, "wb") as berkas:
-        berkas.write(isi)
-    os.replace(sementara, tujuan)
-    print("tersalin %s (%d byte, sha256 %s)" % (tujuan, len(isi), ringkasan),
-          file=sys.stderr)
+def main():
+    blob = load_page()
+    digest = verify_page(blob)
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output"
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "entry.png"), "wb") as handle:
+        handle.write(blob)
+    sys.stderr.write("entry.png terkirim: %d byte, sha256=%s\n" % (len(blob), digest))
 
 
 if __name__ == "__main__":
-    data = baca_sumber()
-    salin(data, periksa(data))
+    main()

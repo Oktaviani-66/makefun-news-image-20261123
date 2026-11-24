@@ -1,536 +1,335 @@
 #!/usr/bin/env python3
-"""THE DAILY MERIDIAN — composer akun13 (@oktaviascreamo0243), NI23 Gelombang 3.
+"""THE MONDAY HERALD — NI23 G4 akun13 compose (local only, PIL ok).
 
-Menggambar halaman depan koran satu halaman untuk Senin 23 November 2026
-dengan PIL: masthead raksasa, strip angka, 14 kartu utama berilustrasi,
-peta dunia titik-titik bernomor pin, timeline UTC, kolom ALSO ON sampai
-40 cerita, dan kotak DATE CHECK merah. Alat lokal saja — program yang
-disubmit adalah main.py (stdlib, copy-only).
-
-Varian: A = putih gading / tinta marun / abu arang (palet akun).
-        B = meja arang (latar gelap, teks gading).
-        C = pita marun (masthead & strip angka di atas pita marun).
-Pakai: python3 compose.py [A|B|C] [jalur-keluar.png]
+Front page for Monday 23 November 2026: lead card spans two columns,
+ten mini cards in a 4-wide grid, a DAY IN NUMBERS box closing the grid,
+a dotted world map with numbered pins, a red DATE CHECK box and an
+ALSO ON briefs block. Usage: python3 compose.py entry.png
 """
-
-import os
-import sys
-
+import math
 from PIL import Image, ImageDraw, ImageFont
 
 FD = "/home/hatch/workspace/tools/bedah-19nov/news-image/fonts/"
 W = H = 1024
+CREAM = (247, 240, 220); CREAM2 = (251, 247, 235)
+INK = (35, 35, 35); BLUE = (0, 45, 140)
+RED = (178, 34, 34); GREY = (110, 104, 92); WHITE = (255, 255, 255)
+GOLD = (255, 210, 90)
+REGIONS = {"EUROPE": (0, 45, 140), "MIDDLE EAST": (178, 90, 20),
+           "SOUTH ASIA": (20, 120, 70), "NORTH AMERICA": (140, 30, 90),
+           "SE ASIA": (0, 130, 140), "AFRICA": (190, 140, 0), "GLOBAL": (90, 90, 90)}
+MAP_LEGEND = "Dotted world map: numbered pins mark the numbered stories of the day"
 
-
-def fb(n):
+def fb(n):  # headline font
     return ImageFont.truetype(FD + "PlayfairDisplay-Bold.ttf", n)
 
-
-def fk(n):
-    return ImageFont.truetype(FD + "PlayfairDisplay-Black.ttf", n)
-
-
-def fi(n):
-    return ImageFont.truetype(FD + "PlayfairDisplay-Italic.ttf", n)
-
-
-def fr(n):
+def fr(n):  # deck / body font
     return ImageFont.truetype(FD + "Archivo.ttf", n)
 
+def fsr(n):  # brief font
+    return ImageFont.truetype(FD + "Archivo.ttf", n)
 
-def fsr(n):
+def fab(n):
     return ImageFont.truetype(FD + "Archivo-Bold.ttf", n)
 
-
-# ---------------------------------------------------------------- data ----
-# Strip angka hari itu: (nilai, label) — semua mengikat kartu utama.
+# (value, label) — labels name the card each number belongs to
 NUMS = [
-    ("720/9d", "INDIA TEST RECORD, WELLINGTON"),
-    ("258-173", "US HOUSE SEATS - DEMOCRATS WIN"),
-    ("65.9%", "INDIGO DOMESTIC MARKET SHARE"),
-    ("$3,538", "GOLD PRICE PER OUNCE, USD"),
-    ("Rs 28,000 cr", "TATA STEEL PIPE UNIT SALE"),
-    ("$95M", "EWING'S METS CONTRACT"),
+    ("258-173", "Democrats House majority confirmed, card 9"),
+    ("720", "India record Test total at Wellington, card 8"),
+    ("14", "people missing after the Kyiv strike, card 6"),
+    ("$3,538", "gold per ounce after the slide, card 10"),
+    ("28,000", "Tata Steel pipe unit sale in crore, brief 30"),
+    ("65.9", "IndiGo domestic market share, brief 31"),
 ]
 
-# Timeline UTC hari itu.
-TL = [
-    ("00:02 UTC", "UN agrees to keep lethal-AI talks going"),
-    ("02:00 UTC", "Sydney: Albanese reacts to COP31 failure"),
-    ("Morning", "Kyiv rescuers free boy aged 7 from rubble"),
-    ("Midday", "Wellington: India declare at 720 for 9"),
-    ("Afternoon", "Washington: House called 258-173"),
-    ("Evening", "Turin: Alcaraz lifts first ATP Finals title"),
+TL = [("00:02Z", "UN AI talks go on"), ("02:00Z", "Albanese on COP31"),
+      ("06:10Z", "Tankers burn, Hormuz"), ("09:40Z", "ICJ on Myanmar"),
+      ("12:20Z", "House 258-173 set"), ("15:05Z", "Alcaraz wins"),
+      ("18:30Z", "Gold $3,538")]
+
+BRIEFS = [
+    "Houthi missile on western Saudi Arabia intercepted by the coalition",
+    "UN nations agree to keep negotiating lethal AI weapons rules",
+    "US declassifies more UFO footage filmed over the Middle East",
+    "Albanese says COP31 failure shows a difficult geopolitical era",
+    "Russia-bound ship towed after attack in the Gulf of Finland",
+    "UK-EU Brexit reset deal called a landmark by Burnham in Parliament",
+    "Thousands march in Lisbon as the cost of living fuels anger",
+    "Myanmar junta calls the ASEAN decision unfair and unbalanced",
+    "Nepal PM Balendra Shah holds bilateral talks with PM Modi in Delhi",
+    "Guru Nanak Jayanti marked under Sewa, Simran aur Sangat theme",
+    "Indonesia fire update: 7 bodies found, 50 still missing",
+    "Day 5 at Wellington: India chase a famous Test win, NZ 119/2",
+    "India win the ODI series in New Zealand 3-2, Phillips player of series",
+    "Anupama retains the IBSF world women's snooker title",
+    "World Chess Championship captivates fans across the globe",
+    "Kota pilgrim bus tragedy in Rajasthan leaves 9 dead",
+    "Tata Steel sells its steel pipe unit for Rs 28,000 crore",
+    "SpiceJet pilots seek an urgent audit; IndiGo holds 65.9% at home",
+    "IFFI 2026 hosts a BRICS roundtable in Goa",
+    "Modi opens an AI centre at IIT Patna with Rs 400 crore projects",
+    "JEE Main 2027 session 1 registration closes today",
+    "Google invests $5 million in AI research at IIT Kharagpur",
+    "India-EU free trade pact likely signed 16 December in Brussels",
+    "Trump criticises Schumer amid the Democrats leadership push",
+    "FBI probes a suspected hack of its criminal justice database",
+    "Miley Cyrus marries Maxx Morando in California",
+    "Swimmer crosses the Strait of Hormuz to spotlight wildlife",
 ]
 
-# Kotak DATE CHECK: buangan bernama + bertanggal (BUKAN berita 23 Nov).
-dc = (
-    "Xi-Trump-Putin summit - 19 Nov 2026 · "
-    "Missiles fell in Poland - 20 Nov 2026 · "
-    "SpiceJet Rs 5,500cr raise - 18 Nov 2026 · "
-    "Hyderabad bomb email - 21 Nov 2026 · "
-    "Paolo Bulgari death - 22 Nov 2026 · "
-    "Kim Jong-un, Seoul - 22 Nov 2026 · "
-    "South Sudan: 24 dead - 22 Nov 2026 · "
-    "Kerch Bridge strike - 22 Nov 2026"
-)
+dc = ("Xi-Trump-Putin trilateral summit - 19 Nov 2026 · "
+      "Russian missiles and drones in Poland - incident 20 Nov 2026 · "
+      "Paolo Bulgari death - reported 22 Nov 2026 · "
+      "24 civilians killed in South Sudan - Juba, 22 Nov 2026 · "
+      "Ukraine strike on Kerch Bridge - reported 22 Nov 2026 · "
+      "South Korea education minister quits - first reported 22 Nov 2026 · "
+      "Indonesia candy-factory fire itself - 22 Nov 2026, only its 23 Nov update counts")
 
-# Kolom ALSO ON (cerita 15-40), satu baris per cerita.
-BRIEFS_L = [
-    "15. IRGC claims 2 Patriot radars hit in Bahrain",
-    "16. Houthi missile intercepted over Saudi west",
-    "17. UN states agree to keep AI-weapons talks on",
-    "18. US declassifies more UFO footage, BBC says",
-    "19. Albanese: COP31 failure shows hard times",
-    "20. Russian cargo ship still ablaze off Finland",
-    "21. Ship towed after attack in Gulf of Finland",
-    "22. Blast hits Russian ship at Benghazi port",
-    "23. Zelenskiy says 14 missing after Kyiv strike",
-    "24. Burnham calls UK-EU reset deal a landmark",
-    "25. Thousands march in Lisbon on living costs",
-    "26. Myanmar junta slams ASEAN ruling as unfair",
-    "27. Cameroon ex-rebels trapped by broken vows",
-]
+PINS = [(1, 0.50, 0.24), (2, 0.60, 0.38), (3, 0.585, 0.36), (4, 0.545, 0.33),
+        (5, 0.565, 0.22), (6, 0.575, 0.21), (7, 0.53, 0.16), (8, 0.90, 0.78),
+        (9, 0.13, 0.28), (10, 0.68, 0.42), (11, 0.545, 0.20), (12, 0.17, 0.30),
+        (13, 0.545, 0.44)]
 
-BRIEFS_R = [
-    "28. Escaped lion spreads fear in a Turkiye town",
-    "29. Nepal PM Shah in bilateral talks with Modi",
-    "30. Guru Nanak Jayanti marked across India",
-    "31. Day 5: India chase famous win, NZ 119/2",
-    "32. India win ODI series in NZ 3-2, Phillips best",
-    "33. Anupama defends IBSF snooker crown",
-    "34. Rajya Sabha MP Wadkute dies in Delhi",
-    "35. Kota pilgrim bus tragedy leaves 9 dead",
-    "36. Modi opens AI centre at IIT Patna",
-    "37. Google puts $5 million into IIT Kharagpur AI",
-    "38. Trump attacks Schumer amid Democrat shuffle",
-    "39. US Army to blast unstable explosives in Iowa",
-    "40. FBI probes hack of criminal database",
-]
-
-# Pin peta: (nomor kartu, bujur, lintang) — skematik titik-titik.
-PINS = [
-    (1, 176, -42), (2, -86, 38), (3, 30, 41), (4, 32, 51),
-    (5, 107, -6), (6, 96, 22), (7, 56, 27), (8, 0, 52),
-    (9, 77, 29), (10, 89, 21), (11, 10, 44), (12, -118, 34),
-    (13, 20, 54), (14, -73, 41),
-]
-
-REGION_COLORS = {
-    "Middle East": (179, 84, 30),
-    "Europe": (46, 90, 136),
-    "North America": (62, 122, 78),
-    "South Asia": (122, 62, 157),
-    "South East Asia": (192, 122, 18),
-    "Africa": (140, 106, 29),
-    "Asia-Pacific": (31, 122, 109),
-    "Global": (90, 84, 76),
-}
-
-# Kotak daratan skematik untuk peta titik: (bujur1, bujur2, lintang1, lintang2)
-LAND = [
-    (-168, -140, 58, 70), (-140, -118, 48, 70), (-125, -104, 31, 50),
-    (-104, -84, 29, 50), (-95, -79, 44, 58), (-84, -68, 25, 47),
-    (-79, -70, 37, 47), (-90, -79, 14, 22), (-104, -94, 17, 29),
-    (-118, -107, 21, 32), (-55, -44, 59, 70), (-45, -29, 59, 76),
-    (-80, -69, 4, 12), (-76, -59, -6, 4), (-70, -54, -16, -6),
-    (-65, -54, -26, -16), (-70, -61, -36, -26), (-73, -67, -46, -36),
-    (-73, -69, -54, -46),
-    (-10, 1, 43, 50), (-6, 1, 50, 55), (-4, 2, 54, 59), (0, 11, 45, 52),
-    (4, 16, 52, 58), (9, 21, 55, 61), (14, 26, 55, 65), (19, 31, 60, 70),
-    (4, 13, 58, 64), (11, 21, 62, 69), (20, 29, 64, 70), (-1, 11, 42, 48),
-    (9, 20, 42, 47), (19, 30, 40, 48), (-10, -1, 36, 44), (19, 29, 35, 42),
-    (27, 41, 41, 48), (29, 46, 47, 55), (-3, 9, 43, 49), (21, 29, 37, 42),
-    (-18, -9, 14, 28), (-10, 1, 27, 35), (0, 11, 29, 37), (10, 21, 29, 33),
-    (20, 31, 27, 32), (30, 36, 27, 32), (-10, 1, 14, 25), (0, 11, 17, 28),
-    (7, 19, 4, 15), (17, 29, 4, 15), (27, 36, -1, 12), (9, 21, -6, 4),
-    (19, 31, -9, -1), (29, 41, -6, 4), (11, 21, -19, -9), (19, 29, -21, -11),
-    (27, 36, -23, -13), (13, 21, -29, -21), (19, 29, -31, -23),
-    (27, 34, -33, -27), (34, 43, -21, -11), (42, 51, -26, -16),
-    (43, 50, -21, -11),
-    (34, 46, 37, 43), (41, 51, 29, 38), (47, 57, 25, 31), (51, 61, 23, 29),
-    (34, 43, 29, 38), (41, 49, 37, 46), (44, 61, 44, 56), (59, 76, 41, 53),
-    (59, 71, 34, 43), (67, 79, 27, 37), (71, 81, 19, 29), (77, 89, 21, 31),
-    (79, 91, 14, 23), (84, 96, 19, 29), (87, 93, 21, 27), (91, 99, 27, 35),
-    (94, 106, 27, 41), (96, 106, 14, 23), (99, 109, 7, 19),
-    (101, 109, 17, 25), (104, 113, 21, 31), (107, 119, 27, 37),
-    (111, 123, 29, 41), (117, 127, 31, 43), (121, 131, 41, 51),
-    (125, 136, 47, 57), (99, 116, 47, 59), (114, 136, 47, 59),
-    (134, 156, 54, 66), (154, 176, 57, 67), (59, 91, 54, 69),
-    (89, 121, 57, 71), (119, 151, 59, 71), (74, 91, 47, 57),
-    (89, 106, 49, 59), (129, 138, 31, 38), (136, 142, 35, 41),
-    (139, 145, 39, 45), (141, 146, 43, 47),
-    (94, 104, -5, 5), (104, 115, -9, -5), (108, 119, -4, 5),
-    (118, 126, -6, 2), (130, 142, -5, -1), (140, 151, -7, -2),
-    (112, 123, -23, -13), (121, 133, -27, -19), (131, 143, -29, -21),
-    (141, 151, -31, -23), (144, 151, -39, -31), (128, 138, -33, -27),
-    (114, 121, -35, -31), (139, 147, -40, -35), (166, 174, -46, -42),
-    (172, 179, -42, -37),
-]
-
-PALETTES = {
-    "A": dict(bg=(246, 240, 223), panel=(252, 248, 238), ink=(38, 32, 26),
-              sub=(92, 84, 72), maroon=(94, 18, 32), line=(176, 164, 140),
-              band=False, soft=(238, 229, 205)),
-    "B": dict(bg=(33, 30, 26), panel=(46, 41, 35), ink=(240, 232, 214),
-              sub=(178, 168, 150), maroon=(206, 116, 78), line=(98, 90, 76),
-              band=False, soft=(40, 36, 31)),
-    "C": dict(bg=(250, 246, 236), panel=(255, 253, 247), ink=(40, 30, 28),
-              sub=(100, 88, 76), maroon=(110, 20, 35), line=(190, 170, 150),
-              band=True, soft=(243, 233, 214)),
-}
-
-PAL = PALETTES["A"]
-
-
-# ------------------------------------------------------------- helpers ----
 def wrap(d, text, font, maxw):
     words, lines, cur = text.split(), [], ""
-    for wd in words:
-        t = (cur + " " + wd).strip()
-        if d.textlength(t, font=font) <= maxw or not cur:
+    for w in words:
+        t = (cur + " " + w).strip()
+        if d.textlength(t, font=font) <= maxw:
             cur = t
         else:
-            lines.append(cur)
-            cur = wd
-    if cur:
-        lines.append(cur)
+            if cur: lines.append(cur)
+            cur = w
+    if cur: lines.append(cur)
     return lines
 
-
-def ctext(d, cx, y, text, font, fill):
-    d.text((cx - d.textlength(text, font=font) / 2, y), text, font=font, fill=fill)
-
-
-def fit_font(d, text, make, size, maxw):
-    while size > 10 and d.textlength(text, font=make(size)) > maxw:
-        size -= 2
-    return make(size)
-
-
-# ---------------------------------------------------------------- icons ---
-def icon(d, kind, cx, cy, s, col, accent):
-    """Ikon gambar-sendiri sederhana di kotak 2s x 2s sekitar (cx, cy)."""
-    x0, y0, x1, y1 = cx - s, cy - s, cx + s, cy + s
-    if kind == "cricket":
-        d.line([x0 + 2, y1 - 2, x0 + 8, y0 + 4], fill=col, width=3)
-        d.ellipse([x1 - 9, y0 + 2, x1 - 1, y0 + 10], outline=accent, width=2)
-        for i in range(3):
-            d.line([x1 - 8 + i * 4, y1 - 10, x1 - 8 + i * 4, y1 - 2], fill=col, width=2)
-    elif kind == "ballot":
-        d.rectangle([x0 + 2, cy, x1 - 2, y1 - 2], outline=col, width=2)
-        d.rectangle([cx - 6, cy - 2, cx + 6, cy + 2], fill=col)
-        d.polygon([cx - 5, y0 + 2, cx + 5, y0 + 2, cx + 3, cy - 3, cx - 3, cy - 3], outline=accent)
+def icon(d, kind, x, y, s):
+    if kind == "tennis":
+        d.ellipse([x+3, y+3, x+s-3, y+s-3], outline=BLUE, width=3)
+        d.arc([x+3, y+3, x+s-3, y+s-3], 20, 160, fill=BLUE, width=2)
+        d.arc([x+3, y+3, x+s-3, y+s-3], 200, 340, fill=BLUE, width=2)
+    elif kind in ("tanker", "shipfire"):
+        d.polygon([(x+2, y+s*0.55), (x+s-2, y+s*0.55), (x+s*0.8, y+s-3), (x+s*0.2, y+s-3)], fill=INK)
+        d.rectangle([x+s*0.3, y+s*0.35, x+s*0.7, y+s*0.55], fill=BLUE)
+        d.polygon([(x+s*0.5, y+2), (x+s*0.38, y+s*0.35), (x+s*0.62, y+s*0.35)], fill=RED)
+    elif kind == "radar":
+        d.line([x+s*0.5, y+s-3, x+s*0.5, y+s*0.4], fill=INK, width=3)
+        d.arc([x+s*0.15, y+2, x+s*0.85, y+s*0.7], 180, 360, fill=BLUE, width=3)
     elif kind == "globe":
-        d.ellipse([x0 + 2, y0 + 2, x1 - 2, y1 - 2], outline=col, width=2)
-        d.ellipse([cx - 4, y0 + 2, cx + 4, y1 - 2], outline=accent, width=1)
-        d.line([x0 + 2, cy, x1 - 2, cy], fill=accent, width=1)
-    elif kind == "rescue":
-        d.polygon([x0 + 2, cy - 2, cx, y0 + 2, x1 - 2, cy - 2], outline=col)
-        d.rectangle([x0 + 5, cy - 2, x1 - 5, y1 - 2], outline=col, width=2)
-        d.line([cx, cy + 3, cx, cy + 9], fill=accent, width=3)
-        d.line([cx - 3, cy + 6, cx + 3, cy + 6], fill=accent, width=3)
-    elif kind == "flame":
-        d.polygon([cx, y0 + 1, x1 - 4, cy + 4, cx + 3, y1 - 2, cx - 3, y1 - 2,
-                   x0 + 4, cy + 4], outline=col)
-        d.ellipse([cx - 3, cy + 2, cx + 3, y1 - 3], fill=accent)
-    elif kind == "scales":
-        d.line([cx, y0 + 4, cx, y1 - 3], fill=col, width=2)
-        d.line([x0 + 2, y0 + 5, x1 - 2, y0 + 5], fill=col, width=2)
-        for px in (x0 + 4, x1 - 8):
-            d.line([px + 2, y0 + 5, px, y0 + 12], fill=accent, width=1)
-            d.line([px + 2, y0 + 5, px + 4, y0 + 12], fill=accent, width=1)
-            d.arc([px - 1, y0 + 10, px + 5, y0 + 16], 0, 180, fill=col, width=2)
-        d.line([cx - 5, y1 - 2, cx + 5, y1 - 2], fill=col, width=2)
-    elif kind == "ship":
-        d.polygon([x0 + 1, cy + 3, x1 - 1, cy + 3, x1 - 5, y1 - 4, x0 + 5, y1 - 4], outline=col)
-        d.line([cx, cy + 3, cx, y0 + 3], fill=col, width=2)
-        d.polygon([cx, y0 + 3, cx + 7, cy + 2, cx, cy + 2], outline=accent)
-        d.arc([x0, y1 - 5, cx, y1 + 3], 0, 180, fill=accent, width=1)
-        d.arc([cx - 2, y1 - 5, x1, y1 + 3], 0, 180, fill=accent, width=1)
+        d.ellipse([x+4, y+2, x+s-4, y+s-2], outline=(20, 120, 70), width=3)
+        d.line([x+s/2, y+2, x+s/2, y+s-2], fill=(20, 120, 70), width=2)
+        d.line([x+4, y+s/2, x+s-4, y+s/2], fill=(20, 120, 70), width=2)
+    elif kind in ("rubble", "building"):
+        d.rectangle([x+s*0.2, y+s*0.25, x+s*0.8, y+s-3], outline=INK, width=3)
+        for i in range(3):
+            d.rectangle([x+s*0.32+i*s*0.18, y+s*0.4, x+s*0.42+i*s*0.18, y+s*0.52], fill=BLUE)
+        if kind == "rubble":
+            d.line([x+s*0.2, y+s*0.25, x+s*0.8, y+s-3], fill=RED, width=3)
+    elif kind == "cricket":
+        d.rectangle([x+s*0.44, y+3, x+s*0.52, y+s*0.6], fill=(150, 100, 40))
+        d.line([x+s*0.48, y+s*0.6, x+s*0.3, y+s-3], fill=INK, width=3)
+        d.line([x+s*0.48, y+s*0.6, x+s*0.66, y+s-3], fill=INK, width=3)
+        d.ellipse([x+s*0.62, y+5, x+s*0.8, y+5+s*0.18], fill=RED)
+    elif kind == "capitol":
+        d.polygon([(x+s*0.5, y+2), (x+s*0.25, y+s*0.35), (x+s*0.75, y+s*0.35)], fill=BLUE)
+        for i in range(4):
+            d.rectangle([x+s*0.18+i*s*0.17, y+s*0.4, x+s*0.26+i*s*0.17, y+s*0.8], fill=INK)
+        d.rectangle([x+3, y+s*0.82, x+s-3, y+s-3], fill=INK)
     elif kind == "gold":
-        for i, yy in enumerate((cy + 4, cy - 2, cy - 8)):
-            off = 0 if i != 1 else 5
-            d.polygon([cx - 10 + off, yy + 5, cx - 6 + off, yy, cx + 6 + off, yy,
-                       cx + 10 + off, yy + 5], outline=col)
-    elif kind == "plane":
-        d.polygon([cx, y0 + 2, cx + 4, cy + 4, x1 - 2, cy + 6, x1 - 2, cy + 9,
-                   cx + 2, cy + 8, cx + 2, y1 - 2, cx - 2, y1 - 2, cx - 2, cy + 8,
-                   x0 + 2, cy + 9, x0 + 2, cy + 6, cx - 4, cy + 4], outline=col)
-    elif kind == "steel":
-        d.rectangle([x0 + 3, y0 + 3, x1 - 3, y0 + 7], fill=col)
-        d.rectangle([x0 + 3, y1 - 7, x1 - 3, y1 - 3], fill=col)
-        d.rectangle([cx - 2, y0 + 3, cx + 2, y1 - 3], fill=accent)
-    elif kind == "trophy":
-        d.arc([cx - 8, y0 + 2, cx + 8, y0 + 20], 0, 180, fill=col, width=2)
-        d.line([cx - 8, y0 + 6, cx - 8, y0 + 11], fill=col, width=2)
-        d.line([cx + 8, y0 + 6, cx + 8, y0 + 11], fill=col, width=2)
-        d.arc([cx - 13, y0 + 4, cx - 6, y0 + 12], 90, 270, fill=accent, width=2)
-        d.arc([cx + 6, y0 + 4, cx + 13, y0 + 12], 270, 90, fill=accent, width=2)
-        d.line([cx, y0 + 12, cx, y1 - 4], fill=col, width=2)
-        d.line([cx - 6, y1 - 3, cx + 6, y1 - 3], fill=col, width=2)
-    elif kind == "rings":
-        d.ellipse([cx - 11, cy - 6, cx + 1, cy + 6], outline=col, width=2)
-        d.ellipse([cx - 1, cy - 6, cx + 11, cy + 6], outline=accent, width=2)
-    elif kind == "chess":
-        d.ellipse([cx - 4, y0 + 2, cx + 4, y0 + 10], outline=col, width=2)
-        d.polygon([cx - 3, y0 + 10, cx + 3, y0 + 10, cx + 6, y1 - 5, cx - 6, y1 - 5],
-                  outline=col)
-        d.rectangle([x0 + 3, y1 - 5, x1 - 3, y1 - 2], fill=accent)
-    elif kind == "baseball":
-        d.ellipse([x0 + 2, y0 + 2, x1 - 2, y1 - 2], outline=col, width=2)
-        d.arc([x0 - 4, y0 + 2, cx, y1 - 2], 270, 90, fill=accent, width=1)
-        d.arc([cx, y0 + 2, x1 + 4, y1 - 2], 90, 270, fill=accent, width=1)
+        d.polygon([(x+s*0.2, y+s*0.6), (x+s*0.8, y+s*0.6), (x+s*0.7, y+s*0.85), (x+s*0.3, y+s*0.85)], fill=(200, 160, 20))
+        d.polygon([(x+s*0.3, y+s*0.3), (x+s*0.7, y+s*0.3), (x+s*0.8, y+s*0.6), (x+s*0.2, y+s*0.6)], fill=(225, 185, 40))
+    elif kind == "gavel":
+        d.line([x+s*0.25, y+s*0.75, x+s*0.7, y+s*0.3], fill=INK, width=4)
+        d.rectangle([x+s*0.55, y+s*0.12, x+s*0.85, y+s*0.32], fill=(120, 70, 20))
+        d.rectangle([x+s*0.15, y+s*0.85, x+s*0.6, y+s*0.93], fill=INK)
+    elif kind == "blast":
+        cx, cy = x+s/2, y+s/2
+        for a in range(0, 360, 45):
+            d.line([cx, cy, cx+s*0.42*math.cos(a*math.pi/180), cy+s*0.42*math.sin(a*math.pi/180)], fill=RED, width=3)
+        d.ellipse([cx-4, cy-4, cx+4, cy+4], fill=(255, 140, 0))
 
+def lead(d, x, y, w, h, num, region, src, head, deck, kind, status, cat):
+    d.rectangle([x, y, x+w, y+h], fill=CREAM2, outline=INK, width=2)
+    d.rectangle([x, y, x+w, y+17], fill=REGIONS[region])
+    d.text((x+5, y+2), f"#{num}", font=fab(12), fill=WHITE)
+    d.text((x+w-5, y+2), src, font=fab(12), fill=WHITE, anchor="ra")
+    icon(d, kind, x+5, y+21, 26)
+    chipw = d.textlength(status, font=fab(11)) + 10
+    col = BLUE if status in ("REPORTED", "OFFICIAL") else (RED if status == "CLAIM" else (120, 80, 0))
+    d.rectangle([x+36, y+23, x+36+chipw, y+39], fill=col)
+    d.text((x+41, y+25), status, font=fab(11), fill=WHITE)
+    d.text((x+42+chipw, y+25), cat, font=fab(10), fill=GREY)
+    tf = fb(29)
+    lines = wrap(d, head, tf, w-12)[:3]
+    ty = y + 50
+    for ln in lines:
+        d.text((x+6, ty), ln, font=tf, fill=INK); ty += 30
+    ff = fr(14)
+    for ln in wrap(d, deck, ff, w-12)[:2]:
+        d.text((x+6, ty+1), ln, font=ff, fill=(60, 58, 50)); ty += 16
 
-# ------------------------------------------------------------------ map ---
+def mini(d, x, y, w, h, num, region, src, head, deck, kind, status, cat):
+    d.rectangle([x, y, x+w, y+h], fill=CREAM2, outline=INK, width=2)
+    d.rectangle([x, y, x+w, y+17], fill=REGIONS[region])
+    d.text((x+5, y+2), f"#{num}", font=fab(12), fill=WHITE)
+    d.text((x+w-5, y+2), src, font=fab(12), fill=WHITE, anchor="ra")
+    icon(d, kind, x+5, y+21, 26)
+    chipw = d.textlength(status, font=fab(11)) + 10
+    col = BLUE if status in ("REPORTED", "OFFICIAL") else (RED if status == "CLAIM" else (120, 80, 0))
+    d.rectangle([x+36, y+23, x+36+chipw, y+39], fill=col)
+    d.text((x+41, y+25), status, font=fab(11), fill=WHITE)
+    d.text((x+42+chipw, y+25), cat, font=fab(10), fill=GREY)
+    tf = fb(24)
+    lines = wrap(d, head, tf, w-12)[:3]
+    lh = 25
+    if len(lines) > 2:
+        tf = fb(22); lines = wrap(d, head, tf, w-12)[:3]; lh = 23
+    ty = y + 50
+    for ln in lines:
+        d.text((x+6, ty), ln, font=tf, fill=INK); ty += lh
+    ff = fr(13)
+    for ln in wrap(d, deck, ff, w-12)[:2 if len(lines) <= 2 else 1]:
+        d.text((x+6, ty+1), ln, font=ff, fill=(60, 58, 50)); ty += 16
+
 def dotted_map(d, x, y, w, h):
-    """Peta dunia titik-titik gambar-sendiri + pin bernomor kartu utama."""
-    lon0, lon1, lat0, lat1 = -170.0, 185.0, 78.0, -58.0
+    blobs = [(0.16, 0.30, 0.11, 0.16), (0.24, 0.62, 0.06, 0.13),
+             (0.50, 0.26, 0.09, 0.10), (0.53, 0.55, 0.07, 0.14),
+             (0.68, 0.30, 0.16, 0.13), (0.72, 0.52, 0.05, 0.08),
+             (0.85, 0.68, 0.06, 0.07)]
+    step = 8
+    for gy in range(int(h/step)):
+        for gx in range(int(w/step)):
+            px, py = gx*step+4, gy*step+4
+            rx, ry = px/w, py/h
+            if any(((rx-cx)/brx)**2 + ((ry-cy)/bry)**2 < 1 for cx, cy, brx, bry in blobs):
+                d.ellipse([x+px-2, y+py-2, x+px+2, y+py+2], fill=(170, 160, 135))
+    for n, rx, ry in PINS:
+        px, py = x+rx*w, y+ry*h
+        d.ellipse([px-8, py-8, px+8, py+8], fill=BLUE)
+        d.text((px, py-6), str(n), font=fab(10), fill=WHITE, anchor="ma")
 
-    def px(lon):
-        return x + (lon - lon0) / (lon1 - lon0) * w
-
-    def py(lat):
-        return y + (lat0 - lat) / (lat0 - lat1) * h
-
-    gx = lon0
-    while gx <= lon1:
-        gy = lat0
-        while gy >= lat1:
-            if any(a <= gx <= b and c <= gy <= e for a, b, c, e in LAND):
-                d.ellipse([px(gx) - 1.4, py(gy) - 1.4, px(gx) + 1.4, py(gy) + 1.4],
-                          fill=PAL["sub"])
-            gy -= 5.4
-        gx += 4.5
-    for num, lon, lat in PINS:
-        cxp, cyp = px(lon), py(lat)
-        d.ellipse([cxp - 7, cyp - 7, cxp + 7, cyp + 7], fill=(252, 248, 238),
-                  outline=PAL["maroon"], width=2)
-        t = str(num)
-        f = fsr(10)
-        d.text((cxp - d.textlength(t, font=f) / 2, cyp - 6), t, font=f,
-               fill=PAL["maroon"])
-
-
-# ---------------------------------------------------------------- cards ---
-def chip_row(d, x, y, w, num, region, src, kind):
-    pal = PAL
-    d.rectangle([x, y, x + 24, y + 15], fill=pal["maroon"])
-    t = str(num)
-    f = fsr(11)
-    d.text((x + 12 - d.textlength(t, font=f) / 2, y + 1), t, font=f,
-           fill=(252, 248, 238))
-    rc = REGION_COLORS[region]
-    lab = region.upper()
-    lf = fsr(10)
-    lw = d.textlength(lab, font=lf) + 10
-    d.rectangle([x + 28, y, x + 28 + lw, y + 15], fill=rc)
-    d.text((x + 33, y + 2), lab, font=lf, fill=(252, 248, 238))
-    sf = fsr(10)
-    edge = x + w - (20 if kind else 0)
-    d.text((edge - d.textlength(src, font=sf), y + 2), src, font=sf, fill=pal["sub"])
-    if kind:
-        icon(d, kind, x + w - 8, y + 7, 7, pal["maroon"], pal["sub"])
-
-
-def lead(d, x, y, w, h, num, region, src, head, deck, kind):
-    """Kartu lead #1: ilustrasi kriket besar + papan skor 720/9."""
-    pal = PAL
-    d.rectangle([x, y, x + w, y + h], fill=pal["panel"], outline=pal["maroon"], width=2)
-    chip_row(d, x + 8, y + 6, w - 16, num, region, src, None)
-    tw = w - 196
-    yy = y + 28
-    for ln in wrap(d, head, fb(34), tw):
-        d.text((x + 8, yy), ln, font=fb(34), fill=pal["ink"])
-        yy += 38
-    for ln in wrap(d, deck, fr(15), tw):
-        d.text((x + 8, yy), ln, font=fr(15), fill=pal["sub"])
-        yy += 18
-    # ilustrasi: lapangan kriket, stump, pemukul, papan skor
-    ix, iy, iw, ih = x + w - 182, y + 30, 172, h - 40
-    d.rectangle([ix, iy, ix + iw, iy + ih], fill=pal["soft"], outline=pal["line"])
-    d.ellipse([ix + 10, iy + 8, ix + 30, iy + 28], outline=pal["maroon"], width=2)
-    d.rectangle([ix + 78, iy + 8, ix + 164, iy + 56], fill=pal["panel"],
-                outline=pal["maroon"], width=2)
-    ctext(d, ix + 121, iy + 12, "720/9", fb(22), pal["maroon"])
-    ctext(d, ix + 121, iy + 38, "DECLARED", fsr(10), pal["sub"])
-    for i in range(3):
-        sx = ix + 22 + i * 7
-        d.line([sx, iy + 112, sx, iy + 84], fill=pal["ink"], width=3)
-    d.line([ix + 22, iy + 84, ix + 36, iy + 84], fill=pal["maroon"], width=2)
-    d.line([ix + 54, iy + 114, ix + 78, iy + 72], fill=pal["ink"], width=5)
-    d.ellipse([ix + 118, iy + 88, ix + 130, iy + 100], fill=pal["maroon"])
-    d.line([ix + 8, iy + 122, ix + iw - 8, iy + 122], fill=pal["line"], width=2)
-
-
-def mini(d, x, y, w, h, num, region, src, head, deck, kind):
-    """Kartu utama ringkas: chip region, ikon, judul besar, fakta, sumber."""
-    pal = PAL
-    d.rectangle([x, y, x + w, y + h], fill=pal["panel"], outline=pal["line"])
-    chip_row(d, x + 7, y + 5, w - 14, num, region, src, kind)
-    yy = y + 24
-    for ln in wrap(d, head, fb(24), w - 14)[:2]:
-        d.text((x + 7, yy), ln, font=fb(24), fill=pal["ink"])
-        yy += 27
-    for ln in wrap(d, deck, fr(14), w - 14)[:3]:
-        d.text((x + 7, yy), ln, font=fr(14), fill=pal["sub"])
-        yy += 16
-
-
-# ----------------------------------------------------------------- page ---
-def render(variant):
-    global PAL
-    PAL = PALETTES[variant]
-    pal = PAL
-    img = Image.new("RGB", (W, H), pal["bg"])
+def render(out):
+    img = Image.new("RGB", (W, H), CREAM)
     d = ImageDraw.Draw(img)
-    ink, sub, mar = pal["ink"], pal["sub"], pal["maroon"]
-
-    # kicker jujur
-    ctext(d, 512, 4, "40 STORIES · 8 REGIONS · EVERY ONE FROM 23 NOVEMBER 2026",
-          fsr(14), mar)
-    d.line([16, 21, 1008, 21], fill=mar, width=2)
-
-    # masthead raksasa + tanggal
-    if pal["band"]:
-        d.rectangle([0, 8, 1024, 92], fill=mar)
-        ctext(d, 512, 16, "THE DAILY MERIDIAN", fit_font(d, "THE DAILY MERIDIAN", fk, 64, 980),
-              (252, 248, 238))
-    else:
-        ctext(d, 512, 12, "THE DAILY MERIDIAN", fit_font(d, "THE DAILY MERIDIAN", fk, 64, 980), mar)
-    d.text((16, 102), "VOL. I · NO. 327", font=fsr(10), fill=sub)
-    rt = "WELLINGTON · LONDON · DELHI"
-    d.text((1008 - d.textlength(rt, font=fsr(10)), 102), rt, font=fsr(10), fill=sub)
-    ctext(d, 512, 96, "Monday 23 November 2026", fb(30), ink)
-    d.line([16, 130, 1008, 130], fill=mar, width=3)
-    d.line([16, 134, 1008, 134], fill=pal["line"], width=1)
-
-    # strip angka
-    if pal["band"]:
-        d.rectangle([0, 136, 1024, 176], fill=mar)
-    short_labs = ["INDIA TEST RECORD", "US HOUSE SEATS", "INDIGO SHARE",
-                  "GOLD PER OUNCE", "TATA STEEL SALE", "EWING CONTRACT"]
-    for i, (val, lab) in enumerate(NUMS):
-        bx = 16 + i * 165
-        ctext(d, bx + 78, 140, val, fsr(23), (252, 248, 238) if pal["band"] else mar)
-        ctext(d, bx + 78, 165, short_labs[i], fsr(10),
-              (238, 220, 200) if pal["band"] else sub)
-
-    # kartu-kartu utama
-    lead(d, 16, 180, 548, 172, "1", "South Asia", "ObserverVoice · 23 Nov",
-         "India Post Record 720/9 at Wellington",
-         "India declared at 720 for 9 at Wellington - the highest Test total "
-         "ever made in New Zealand, leaving the hosts a mountain to climb.",
-         "cricket")
-    mini(d, 572, 180, 436, 84, "2", "North America", "BBC · 23 Nov",
-         "Democrats Take House 258-173",
-         "Democrats won 258 seats to 173 after flipping North Carolina - "
-         "biggest House majority since 1992, BBC said.", "ballot")
-    mini(d, 572, 268, 436, 84, "3", "Europe", "BBC / AP · 23 Nov",
-         "COP31 Ends With No Deal",
-         "COP31 closed in Turkiye with no deal; the final draft omitted "
-         "fossil fuels, BBC and AP reported.", "globe")
-    mini(d, 16, 358, 242, 106, "4", "Europe", "BBC · 23 Nov",
-         "Boy, 7, Saved From Kyiv Rubble",
-         "Rescuers freed the boy after hours in Kyiv rubble; 6 died, BBC said.", "rescue")
-    mini(d, 266, 358, 242, 106, "5", "South East Asia", "JagranJosh · 23 Nov",
-         "Indonesia Fire: 7 Found, 50 Lost",
-         "7 body bags found in Indonesia; 50 missing, JagranJosh said.", "flame")
-    mini(d, 516, 358, 242, 106, "6", "South East Asia", "ICJ ruling · 23 Nov",
-         "ICJ: Myanmar Guilty of Genocide",
-         "Myanmar's 2017 Rohingya campaign, 700,000 fled, ruled genocide.", "scales")
-    mini(d, 766, 358, 242, 106, "7", "Middle East", "AP live · 23 Nov",
-         "Tanker Ablaze in Hormuz Strait",
-         "Tanker burned as Iran-US war widened; IRGC warned, AP said.", "ship")
-    mini(d, 16, 470, 242, 106, "8", "Global", "ObserverVoice · 23 Nov",
-         "Gold Slides to $3,538 an Ounce",
-         "Down over $2,000 from the 2026 record of $5,595, say reports.", "gold")
-    mini(d, 266, 470, 242, 106, "9", "South Asia", "ObserverVoice · 23 Nov",
-         "IndiGo Holds 65.9% of the Skies",
-         "As SpiceJet pilots sought an audit, IndiGo took 65.9% share.", "plane")
-    mini(d, 516, 470, 242, 106, "10", "South Asia", "ObserverVoice · 23 Nov",
-         "Tata Steel Sells Pipe Unit",
-         "APL Apollo bought the unit for Rs 28,000 crore, reports said.", "steel")
-    mini(d, 766, 470, 242, 106, "11", "Europe", "BBC Sport · 23 Nov",
-         "Alcaraz Beats Zverev for Crown",
-         "Carlos Alcaraz beat Alexander Zverev for his 1st ATP crown.", "trophy")
-    mini(d, 16, 582, 325, 106, "12", "North America", "BBC · 23 Nov",
-         "Miley Cyrus Marries Maxx Morando",
-         "Miley Cyrus married Maxx Morando in California, BBC confirmed on Monday.", "rings")
-    mini(d, 349, 582, 325, 106, "13", "Global", "ObserverVoice · 23 Nov",
-         "World Chess Title Fight Grips Fans",
-         "The World Chess Championship captivated fans as the title match tightened.", "chess")
-    mini(d, 682, 582, 325, 106, "14", "North America", "AP wire · 23 Nov",
-         "Mets Land Ewing in $95M Deal",
-         "New York Mets agreed an 8-year, $95 million deal with A.J. Ewing, AP said.", "baseball")
-
-    # timeline UTC
-    d.line([16, 694, 1008, 694], fill=pal["line"])
-    for i, (tm, tx) in enumerate(TL):
-        bx = 16 + i * 165
-        lines = wrap(d, tm + " · " + tx, fr(12), 157)[:2]
-        yy = 698
-        for ln in lines:
-            d.text((bx, yy), ln, font=fr(12), fill=sub)
-            yy += 15
-    d.line([16, 730, 1008, 730], fill=pal["line"])
-
-    # peta + legenda (kiri bawah)
-    d.text((16, 736), "THE DAY ON THE MAP", font=fsr(13), fill=mar)
-    dotted_map(d, 16, 754, 336, 92)
-    ly = 850
-    for ln in wrap(d, "Dotted map: numbered pins mark the 14 main stories; "
-                      "dot clusters sketch the continents.", fsr(11), 336):
-        d.text((16, ly), ln, font=fsr(11), fill=sub)
-        ly += 13
-    ly += 3
-    regs = list(REGION_COLORS.items())
-    for i, (name, colr) in enumerate(regs):
-        cx = 16 + (i % 2) * 172
-        cy = ly + (i // 2) * 13
-        d.rectangle([cx, cy + 2, cx + 10, cy + 12], fill=colr)
-        d.text((cx + 14, cy), name, font=fsr(10), fill=sub)
-
-    # ALSO ON (kanan bawah)
-    d.text((364, 736), "ALSO ON THE DAY - STORIES 15-40", font=fsr(13), fill=mar)
-    for col, briefs in enumerate((BRIEFS_L, BRIEFS_R)):
-        bx = 364 + col * 326
-        yy = 756
-        for b in briefs:
-            t = b
-            while d.textlength(t, font=fsr(13)) > 318 and " " in t:
-                t = t[:t.rfind(" ")]
-            d.text((bx, yy), t, font=fsr(13), fill=ink)
-            yy += 14
-
-    # DATE CHECK merah
-    red = (168, 30, 30)
-    d.rectangle([16, 944, 1008, 988], outline=red, width=2)
-    d.text((26, 952), "DATE CHECK", font=fsr(13), fill=red)
-    d.text((26, 968), "NOT 23 NOV", font=fsr(10), fill=red)
-    items = dc.split(" · ")
-    for i, it in enumerate(items):
-        bx = 150 + (i % 4) * 216
-        by = 953 + (i // 4) * 19
-        d.text((bx, by), it, font=fr(11), fill=red)
-
-    # footer
-    ctext(d, 512, 996,
-          "Every story happened, or was first reported, on Monday 23 November "
-          "2026. Contested claims are attributed. · Original drawings.",
-          fr(11), sub)
-    return img
-
-
-def main():
-    variant = sys.argv[1] if len(sys.argv) > 1 else "A"
-    out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "entry.png")
-    img = render(variant)
-    img.save(out, optimize=True)
-    print("%s -> %s (%d bytes)" % (variant, out, os.path.getsize(out)))
-
+    total = 13 + len(BRIEFS)
+    counts = {"EUROPE": 10, "MIDDLE EAST": 4, "SOUTH ASIA": 13, "NORTH AMERICA": 6,
+              "SE ASIA": 3, "AFRICA": 1, "GLOBAL": 3}
+    d.rectangle([0, 0, W, 26], fill=INK)
+    d.text((10, 5), "THE MONDAY HERALD", font=fab(14), fill=WHITE)
+    kick = f"{total} STORIES · 7 REGIONS · EVERY ONE FROM 23 NOVEMBER 2026"
+    d.text((W-10, 5), kick, font=fab(13), fill=GOLD, anchor="ra")
+    d.text((512, 30), "Monday 23 November 2026",
+           font=ImageFont.truetype(FD + "PlayfairDisplay-Black.ttf", 72), fill=INK, anchor="ma")
+    d.text((512, 106), "THE MONDAY HERALD", font=fb(38), fill=BLUE, anchor="ma")
+    d.text((512, 148), "Alcaraz's first ATP Finals crown · Tankers burn in Hormuz · COP31 ends with no deal",
+           font=fab(16), fill=RED, anchor="ma")
+    d.line([10, 164, W-10, 164], fill=INK, width=3)
+    x = 10
+    d.text((x, 170), "REGIONS:", font=fab(12), fill=INK); x += 66
+    for r, col in REGIONS.items():
+        label = f"{r} {counts.get(r, 0)}"
+        tw = d.textlength(label, font=fab(12)) + 12
+        d.rectangle([x, 168, x+tw, 186], fill=col)
+        d.text((x+6, 171), label, font=fab(12), fill=WHITE)
+        x += tw + 5
+    d.rectangle([10, 190, W-10, 212], fill=(238, 230, 205), outline=INK, width=1)
+    tx = 15
+    d.text((tx, 195), "UTC DAY:", font=fab(11), fill=INK); tx += 58
+    for t, ev in TL:
+        s = f"{t} {ev}"
+        d.text((tx, 195), s, font=fr(11), fill=(50, 48, 40))
+        tx += d.textlength(s, font=fr(11)) + 12
+    M, GAP = 10, 5
+    cw = (W - 2*M - 3*GAP) // 4
+    rh, gy = 136, 218
+    lead(d, M, gy, cw*2+GAP, rh, 1, "EUROPE", "BBC Sport",
+         "Alcaraz Beats Zverev for His First ATP Finals Title",
+         "Carlos Alcaraz beat Alexander Zverev in Turin for his 1st ATP Finals crown.",
+         "tennis", "REPORTED", "SPORT · TENNIS")
+    mini(d, M+2*cw+2*GAP, gy, cw, rh, 2, "MIDDLE EAST", "AP live",
+         "Tankers Burn in the Strait of Hormuz",
+         "Tankers ablaze as the Iran-US war widened into the Gulf; the IRGC warned of unrest.",
+         "tanker", "ONGOING", "GULF · WAR")
+    mini(d, M+3*cw+3*GAP, gy, cw, rh, 3, "MIDDLE EAST", "AP / AFP",
+         "IRGC Claims It Destroyed 2 Patriot Radars in Bahrain",
+         "Tehran claims 2 Patriot radars destroyed at a US base in Bahrain; unconfirmed.",
+         "radar", "CLAIM", "GULF · WAR")
+    mini(d, M, gy+rh+GAP, cw, rh, 4, "EUROPE", "BBC / AP", "COP31 Ends Without a Deal in Antalya",
+         "COP31 in Antalya, Turkiye: the final draft omitted fossil fuels; no deal was reached.",
+         "globe", "OFFICIAL", "CLIMATE")
+    mini(d, M+cw+GAP, gy+rh+GAP, cw, rh, 5, "EUROPE", "BBC", "Kyiv Boy, 7, Pulled Alive From the Rubble",
+         "Rescuers freed the 7-year-old after hours in Kyiv rubble; 6 people were killed.",
+         "rubble", "REPORTED", "WAR")
+    mini(d, M+2*cw+2*GAP, gy+rh+GAP, cw, rh, 6, "EUROPE", "JagranJosh", "14 Missing After Kyiv Strike, Zelenskiy Says",
+         "Zelenskiy says 14 are missing after a Russian drone hit a Kyiv region building.",
+         "building", "ON RECORD", "WAR")
+    mini(d, M+3*cw+3*GAP, gy+rh+GAP, cw, rh, 7, "EUROPE", "BBC", "Russian Cargo Ship Still Burns Off Finland",
+         "The Russian cargo ship was still burning off Finland after an attack at sea.",
+         "shipfire", "ONGOING", "SEA · WAR")
+    mini(d, M, gy+2*rh+2*GAP, cw, rh, 8, "SOUTH ASIA", "ObserverVoice", "India Declare on a Record 720/9 at Wellington",
+         "India posted 720 for 9 declared, a record Test total on New Zealand soil.",
+         "cricket", "REPORTED", "SPORT · CRICKET")
+    mini(d, M+cw+GAP, gy+2*rh+2*GAP, cw, rh, 9, "NORTH AMERICA", "BBC", "Democrats' House Majority Confirmed at 258-173",
+         "The 258-173 majority, largest since 1992, was confirmed after North Carolina fell.",
+         "capitol", "OFFICIAL", "POLITICS")
+    mini(d, M+2*cw+2*GAP, gy+2*rh+2*GAP, cw, rh, 10, "GLOBAL", "ObserverVoice", "Gold Slides to $3,538 an Ounce",
+         "Gold fell to $3,538 an ounce, over $2,000 below the 2026 record of $5,595.",
+         "gold", "REPORTED", "MARKETS")
+    mini(d, M+3*cw+3*GAP, gy+2*rh+2*GAP, cw, rh, 11, "SE ASIA", "Guardian / NYT", "ICJ Rules Myanmar Guilty of Genocide",
+         "The ICJ ruled on the 2017 Rohingya campaign in Myanmar; 700,000 people fled.",
+         "gavel", "OFFICIAL", "LAW · RIGHTS")
+    yy = gy + 3*(rh+GAP)
+    mini(d, M, yy, cw, rh, 12, "NORTH AMERICA", "BBC",
+         "US Army to Detonate Unstable Explosives in Iowa",
+         "The US Army will detonate tonnes of unstable explosives despite a court order in Iowa.",
+         "blast", "REPORTED", "SECURITY")
+    mini(d, M+cw+GAP, yy, cw, rh, 13, "AFRICA", "BBC",
+         "Suspected Drone Strike Hits Ship at Benghazi",
+         "An explosion hit a Russian ship in Benghazi port; a drone strike is suspected.",
+         "blast", "CLAIM", "SEA · WAR")
+    nx = M + 2*cw + 2*GAP; nw = cw*2 + GAP
+    d.rectangle([nx, yy, nx+nw, yy+rh], fill=INK)
+    d.text((nx+10, yy+6), "THE DAY IN NUMBERS", font=fab(15), fill=GOLD)
+    ny = yy + 30
+    for i in range(3):
+        for j in range(2):
+            val, lab = NUMS[i*2+j]
+            xx = nx + 10 + j*(nw//2)
+            d.text((xx, ny), val, font=fb(21), fill=WHITE)
+            labln = wrap(d, lab, fr(10), nw//2 - 14)[0]
+            d.text((xx, ny+24), labln, font=fr(10), fill=(220, 215, 195))
+        ny += 36
+    band_y = yy + rh + 6
+    bh = 86
+    d.rectangle([M, band_y, M+596, band_y+bh], outline=RED, width=3)
+    d.text((M+8, band_y+5), "DATE CHECK - NOT 23 NOVEMBER NEWS:", font=fab(13), fill=RED)
+    dy = band_y + 24
+    for s in dc.split(" · "):
+        d.text((M+8, dy), "· " + s, font=fr(11), fill=(90, 30, 30)); dy += 10
+    mx = M + 602
+    d.rectangle([mx, band_y, W-M, band_y+bh], fill=CREAM2, outline=INK, width=2)
+    d.text((mx+8, band_y+4), "WHERE IT HAPPENED - pins mark the numbered stories", font=fab(11), fill=INK)
+    dotted_map(d, mx+6, band_y+20, W-M-mx-12, bh-24)
+    also_y = band_y + bh + 6
+    d.line([M, also_y, W-M, also_y], fill=INK, width=2)
+    d.text((M, also_y+3), "ALSO ON MONDAY:", font=fab(13), fill=BLUE)
+    cols = 4; colw = (W - 2*M) // cols
+    ay = also_y + 24
+    per = (len(BRIEFS) + cols - 1) // cols
+    for ci in range(cols):
+        for ri, b in enumerate(BRIEFS[ci*per:(ci+1)*per]):
+            s = f"#{14 + ci*per + ri} {b}"
+            while d.textlength(s, font=fsr(12)) > colw - 6 and len(s) > 10:
+                s = s[:-2]
+            d.text((M + ci*colw, ay + ri*12), s, font=fsr(12), fill=(50, 48, 40))
+    fy = H - 32
+    d.rectangle([0, fy, W, H], fill=INK)
+    d.text((10, fy+3), "HOW SURE: REPORTED = reported by named outlets · CLAIM = one side's account, labelled · ONGOING = still developing · OFFICIAL / ON RECORD = stated by officials.",
+           font=fr(11), fill=WHITE)
+    d.text((10, fy+18), "Every story happened, or was first reported, on Monday 23 November 2026. Contested claims are attributed. · Original drawings.",
+           font=fr(11), fill=GOLD)
+    img.save(out)
+    print(out, img.size)
 
 if __name__ == "__main__":
-    main()
+    import sys
+    render(sys.argv[1] if len(sys.argv) > 1 else "entry.png")
